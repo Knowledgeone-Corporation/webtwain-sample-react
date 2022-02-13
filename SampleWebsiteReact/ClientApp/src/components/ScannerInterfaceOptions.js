@@ -42,10 +42,10 @@ export class ScannerInterfaceOptions extends Component {
                     <div>
                         <select id="interface-option-dropdown" onChange={this.handleInterfaceChange} className="form-control">
                             <option>Please select...</option>
-                            <option value="0">Hidden</option>
-                            <option value="1">Visible</option>
-                            <option value="2">Web</option>
-                            <option value="3">Desktop</option>
+                            <option value="0">Hidden: no user interface will be shown</option>
+                            <option value="1">Visible: WebTWAIN user interface will be shown</option>
+                            <option value="2">Web: only the WebTWAIN user interface will be shown</option>
+                            <option value="3">Desktop: only the scanner's TWAIN user interface will be shown</option>
                         </select>
                     </div>
                 </div>

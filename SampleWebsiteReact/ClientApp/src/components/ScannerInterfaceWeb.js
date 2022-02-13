@@ -53,11 +53,6 @@ export class ScannerInterfaceWeb extends Component {
 
         return (
             <div id="k1interface-visible" className="show">
-                <div><label>Name:</label></div>
-                <input asp-for="Name" className="form-control" />
-
-                <div><label>Title:</label></div>
-                <input asp-for="Title" className="form-control" />
 
                 <div><label>Scan Document:</label></div>
                 <div className="input-group">
