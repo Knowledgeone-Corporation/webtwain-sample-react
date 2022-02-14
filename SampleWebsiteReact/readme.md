@@ -10,7 +10,6 @@ Samples are also available for .NET Core, Vue, Angular & .NET Blazor. Please see
 ## Getting started.
 ### Prerequisites
 * node v16.13.1
-* .NET Core 3.1
 * Visual Studio
 * .NET Core 3.1 Runtime (required for the demo "backend" to receive the response from the service)
 * .NET Framework 4.7.2 if running on Windows (required for the scanning service)
