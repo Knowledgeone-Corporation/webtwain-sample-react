@@ -7,7 +7,7 @@ export class Home extends Component {
     render() {
         return (
             <div>
-                <div><h1>Scan Demo Page: React</h1></div>
+                <div><h1 className='mt-3'>Scan Demo Page: React</h1></div>
                 <div className="alert alert-info alert-dismissible show" role="alert">
                     <strong>Note: </strong>The demonstration service has the following limitations;
                     - generated documents contain a watermark,

@@ -9,7 +9,7 @@ export class ScanError extends Component {
         return (
             <div className="alert alert-danger" id="errorMessageDiv">
                 <div>
-                    <label>Error</label>
+                    <label className='scanning-label'>Error</label>
                 </div>
                 <pre id="errorMessageOutput">
                     {this.props.message}
