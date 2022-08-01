@@ -1,33 +1,31 @@
 import React, { Component } from 'react';
 import $ from 'jquery';
-import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_framework.js';
-import { ScanError } from './ScanError';
-import { ScanCompleted } from './ScanCompleted';
-import '../lib/k1scanservice/css/k1ss.min.css';
+import { isEmpty } from 'lodash';
+import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_obfuscated.js';
+import { convertRawOptions, defaultOptionsValue, generateScanFileName, renderOptions } from '../utils/scanningUtils.js';
 
 export class ScannerInterfaceHidden extends Component {
     constructor(props) {
         super(props);
         this.state = {
             discoveredDevices: [],
-            selectedDevice: null,
+            selectedDevice: {},
             documentSourceOptions: [],
-            selectedDocumentSource: null,
+            selectedDocumentSource: 0,
             duplexOptions: [],
-            selectedDuplexOption: -1,
+            selectedDuplexOption: 0,
             pageSizeOptions: [],
-            selectedPageSizeOption: -1,
+            selectedPageSizeOption: 0,
             pixelTypeOptions: [],
-            selectedPixelTypeOption: -1,
+            selectedPixelTypeOption: 0,
             resolutionOptions: [],
-            selectedResolutionOption: -1,
+            selectedResolutionOption: 0,
             ocrOptions: [],
-            selectedOcrOption: -1,
+            selectedOcrOption: K1WebTwain.Options.OcrType.None,
             fileTypeOptions: [],
-            selectedFileTypeOption: -1,
-            outputFilename: "",
-            acquireResponse: null,
-            acquireError: null,
+            selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.PDF,
+            outputFilename: '',
+            isDisplayUI: false
         };
         this.handleAcquireClick = this.handleAcquireClick.bind(this);
         this.onDeviceChange = this.onDeviceChange.bind(this);
@@ -35,10 +33,10 @@ export class ScannerInterfaceHidden extends Component {
     }
 
     componentDidMount() {
-        console.log("ScannerInterfaceHidden");
+        let self = this;
         let configuration = {
             onComplete: function () { }, //function called when scan complete
-            viewButton: $(".k1ViewBtn"), //This is optional. Specify a element that when clicked will view scanned document
+            viewButton: null, //This is optional. Specify a element that when clicked will view scanned document
             fileUploadURL: document.location.origin + '/Home/UploadFile', //This is the service that the scanned document will be uploaded to when complete
             clientID: "" + Date.now(), //This is a way to identify the user who is scanning.  It should be unique per user.  Session ID could be used if no user logged in
             setupFile: document.location.origin + '/Home/DownloadSetup', //location of the installation file if service doesn't yet exist
@@ -47,60 +45,79 @@ export class ScannerInterfaceHidden extends Component {
             scanButton: $("#scanbtn"), // the scan button
         };
 
-        K1WebTwain.Configure(configuration).then(x => {
-            K1WebTwain.GetDevices().then(devices => {
-                console.log(devices);
-                let mappedDevices = devices.map(device => {
-                    return { value: device.id, display: device.name };
-                });
+        K1WebTwain.Configure(configuration).then(() => {
+            this.setState({ 
+                isDisplayUI: false,
+            });
 
-                let mappedOcrTypes = Object.keys(K1WebTwain.Options.OcrType).map((key) => {
-                    return { value: K1WebTwain.Options.OcrType[key], display: key };
-                });
+            K1WebTwain.ResetService().then(function () {
+                setTimeout(() => {
+                    self.renderSelection();
+                    self.setState({ 
+                        isDisplayUI: true,
+                    });
+                },4000)
+            });
+        }).catch(err => {
+            console.log(err);
+            K1WebTwain.ResetService();
+        });
+    }
 
-                let mappedFileTypeOptions = Object.keys(K1WebTwain.Options.OutputFiletype).map((key) => {
-                    return { value: K1WebTwain.Options.OutputFiletype[key], display: key };
+    renderSelection() {
+        K1WebTwain.GetDevices().then(devices => {
+            let mappedDevices = devices.map(device => ({ value: device.id, display: device.name }));
+            let mappedOcrTypes = convertRawOptions(K1WebTwain.Options.OcrType, true);
+            let mappedFileTypeOptions = convertRawOptions(K1WebTwain.Options.OutputFiletype, true);
+            
+            this.setState({
+                discoveredDevices: renderOptions(mappedDevices),
+                ocrOptions: renderOptions(mappedOcrTypes),
+                fileTypeOptions: renderOptions(mappedFileTypeOptions),
+                outputFilename: generateScanFileName()
+            });
+
+            this.onDeviceChange(defaultOptionsValue(mappedDevices));
+        }).catch(err => {
+            console.error(err);
+        });
+    }
+
+    onDeviceChange(deviceId) {
+        K1WebTwain.Device(deviceId).then(deviceInfo => {
+            if(!isEmpty(deviceInfo)) {
+                let documentSourceOptions = Object.keys(deviceInfo.documentSourceIds).map((key) => {
+                    return { value: key, display: deviceInfo.documentSourceIds[key].name };
                 });
 
                 this.setState({
-                    discoveredDevices: [{ value: -1, display: "Please Select" }].concat(mappedDevices),
-                    ocrOptions: [{ value: -1, display: "Please Select" }].concat(mappedOcrTypes),
-                    fileTypeOptions: [{ value: -1, display: "Please Select" }].concat(mappedFileTypeOptions),
+                    selectedDevice: deviceInfo,
+                    selectedDocumentSource: defaultOptionsValue(documentSourceOptions),
+                    duplexOptions: [],
+                    pageSizeOptions: [],
+                    pixelTypeOptions: [],
+                    resolutionOptions: [],
+                    documentSourceOptions: renderOptions(documentSourceOptions),
                 });
-            }).catch(err => {
-                console.error(err);
+
+                this.onDocumentSourceChange(defaultOptionsValue(documentSourceOptions));
+            }
+        }).catch(err => {
+            console.log(err);
+            this.setState({
+                selectedDevice: {},
+                selectedDocumentSource: 0,
+                duplexOptions: [],
+                pageSizeOptions: [],
+                pixelTypeOptions: [],
+                resolutionOptions: [],
+                documentSourceOptions: [],
             });
-        }).catch(x => {
-            console.log(x);
-        });
+        })
     }
 
-
-    onDeviceChange(e) {
-        console.log(e);
-        let device = K1WebTwain.Device(e.target.value);
-        console.log(device);
-        let documentSourceOptions = [];
-
-        if (device !== null) {
-            documentSourceOptions = Object.keys(device.documentSourceIds).map((key) => {
-                return { value: key, display: device.documentSourceIds[key].name };
-            });
-        }
-
-        this.setState({
-            selectedDevice: device,
-            selectedDocumentSource: null,
-            duplexOptions: [],
-            pageSizeOptions: [],
-            pixelTypeOptions: [],
-            resolutionOptions: [],
-            documentSourceOptions: [{ value: -1, display: "Please Select" }].concat(documentSourceOptions),
-        });
-    }
-
-    onDocumentSourceChange(e) {
-        let selectedDocumentSource = this.state.selectedDevice.documentSourceIds[e.target.value];
+    onDocumentSourceChange(documentSourceId) {
+        let selectedDocumentSource = this.state.selectedDevice.documentSourceIds[documentSourceId];
 
         let duplexOptions = [],
             pageSizeOptions = [],
@@ -108,182 +125,134 @@ export class ScannerInterfaceHidden extends Component {
             resolutionOptions = [];
 
         if (!!selectedDocumentSource) {
-            duplexOptions = Object.keys(selectedDocumentSource.duplexIds).map((key) => {
-                return { value: key, display: selectedDocumentSource.duplexIds[key] };
-            });
-
-            if (duplexOptions.length > 0) {
-                duplexOptions = [{ value: -1, display: "Please Select" }].concat(duplexOptions)
-            }
-
-            pageSizeOptions = Object.keys(selectedDocumentSource.pageSizeIds).map((key) => {
-                return { value: key, display: selectedDocumentSource.pageSizeIds[key] };
-            });
-
-            if (pageSizeOptions.length > 0) {
-                pageSizeOptions = [{ value: -1, display: "Please Select" }].concat(pageSizeOptions)
-            }
-
-            pixelTypeOptions = Object.keys(selectedDocumentSource.pixelTypeIds).map((key) => {
-                return { value: key, display: selectedDocumentSource.pixelTypeIds[key] };
-            });
-
-            if (pixelTypeOptions.length > 0) {
-                pixelTypeOptions = [{ value: -1, display: "Please Select" }].concat(pixelTypeOptions)
-            }
-
-            resolutionOptions = Object.keys(selectedDocumentSource.resolutionIds).map((key) => {
-                return { value: key, display: selectedDocumentSource.resolutionIds[key] };
-            });
-
-            if (resolutionOptions.length > 0) {
-                resolutionOptions = [{ value: -1, display: "Please Select" }].concat(resolutionOptions)
-            }
-        }
-        else {
+            duplexOptions = convertRawOptions(selectedDocumentSource.duplexIds);
+            pageSizeOptions = convertRawOptions(selectedDocumentSource.pageSizeIds);
+            pixelTypeOptions = convertRawOptions(selectedDocumentSource.pixelTypeIds);
+            resolutionOptions = convertRawOptions(selectedDocumentSource.resolutionIds);
+        } else {
             selectedDocumentSource = null;
         }
 
-        console.log(selectedDocumentSource);
-
         this.setState({
-            selectedDuplexOption: -1,
-            selectedPageSizeOption: -1,
-            selectedPixelTypeOption: -1,
-            selectedResolutionOption: -1,
-            selectedDocumentSource: selectedDocumentSource,
-            duplexOptions: duplexOptions,
-            pageSizeOptions: pageSizeOptions,
-            pixelTypeOptions: pixelTypeOptions,
-            resolutionOptions: resolutionOptions,
+            selectedDuplexOption: defaultOptionsValue(duplexOptions),
+            selectedPageSizeOption: defaultOptionsValue(pageSizeOptions),
+            selectedPixelTypeOption: defaultOptionsValue(pixelTypeOptions),
+            selectedResolutionOption: defaultOptionsValue(resolutionOptions),
+            selectedDocumentSource: documentSourceId,
+            duplexOptions: renderOptions(duplexOptions),
+            pageSizeOptions: renderOptions(pageSizeOptions),
+            pixelTypeOptions: renderOptions(pixelTypeOptions),
+            resolutionOptions: renderOptions(resolutionOptions),
         });
     }
 
     handleAcquireClick() {
         this.setState({
-            acquireResponse: null,
-            acquireError: null,
-        });
-
+            isDisplayUI: false
+        })
         let acquireRequest = {
             deviceId: this.state.selectedDevice.id,
             resolutionId: this.state.selectedResolutionOption,
             pixelTypeId: this.state.selectedPixelTypeOption,
             pageSizeId: this.state.selectedPageSizeOption,
-            documentSourceId: this.state.selectedDocumentSource.id,
+            documentSourceId: this.state.selectedDocumentSource,
             duplexId: this.state.selectedDuplexOption,
             filetype: this.state.selectedFileTypeOption,
             ocrType: this.state.selectedOcrOption,
             filename: this.state.outputFilename,
         };
 
-        console.log(acquireRequest);
-
         K1WebTwain.Acquire(acquireRequest)
             .then(response => {
-                console.log(response);
-                this.setState({
-                    acquireResponse: response,
+                this.props.completeAcquire({
+                    acquireResponse: JSON.stringify(response.uploadResponse, null, 4),
+                    acquireError: '',
                 });
             })
             .catch(err => {
                 console.error(err);
-                let myError = null;
-
                 if (!!err.responseText) {
-                    myError = err.responseText;
+                    this.props.completeAcquire({
+                        acquireResponse: '',
+                        acquireError: err.responseText,
+                    });
                 }
 
                 if (!!err.responseJSON) {
                     try {
-                        myError = JSON.stringify(err.responseJSON, null, 4);
-                    }
-                    catch (e) {
+                        this.props.completeAcquire({
+                            acquireResponse: '',
+                            acquireError: JSON.stringify(err.responseJSON, null, 4),
+                        });
+                    } catch (e) {
                         console.warn(e);
                     }
                 }
-
-                this.setState({
-                    acquireError: myError,
-                });
             });
     }
 
     render() {
-        let successPanel = this.state.acquireResponse !== null ? <ScanCompleted message={JSON.stringify(this.state.acquireResponse, null, 4)} /> : "";
-        let errorPanel = this.state.acquireError !== null ? <ScanError message={this.state.acquireError} /> : "";
-
-
-        let filesizePanel = this.state.acquireResponse !== null ? <span className="input-group-addon filesize">{this.state.acquireResponse.sizeDisplay}</span> : "";
-
-        let viewButton = this.state.acquireResponse !== null ? <div className="input-group-btn fileview">
-            <button id="viewBtn2" type="button" className="btn btn-default k1ViewBtn">View</button>
-        </div> : "";
-
-        let documentSource = this.state.selectedDevice !== null ? <div id="source-group" className="twain-feature-group" >
-            <label>Document Source</label>
-            <select id="sel-document-source" className="form-control" onChange={this.onDocumentSourceChange}>
+        let documentSource = !isEmpty(this.state.selectedDevice) ? <div id="source-group" className="twain-feature-group" >
+            <label className="scanning-label mt-2">Document Source</label>
+            <select id="sel-document-source" className="form-control" value={this.state.selectedDocumentSource} onChange={e => this.onDocumentSourceChange(e.target.value)}>
                 {this.state.documentSourceOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
             </select>
         </div> : "";
 
         let resolutions = this.state.resolutionOptions.length > 0 ? <div id="dpi-group" className="twain-feature-group" >
-            <label>Resolution (DPI)</label>
-            <select id="sel-dpi" className="form-control" onChange={e => this.setState({ selectedResolutionOption: e.target.value })}>
+            <label className="scanning-label mt-2">Resolution (DPI)</label>
+            <select id="sel-dpi" className="form-control" value={this.state.selectedResolutionOption} onChange={e => this.setState({ selectedResolutionOption: e.target.value })}>
                 {this.state.resolutionOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
             </select>
         </div> : "";
 
         let pixelTypes = this.state.pixelTypeOptions.length > 0 ? <div id="color-group" className="twain-feature-group" >
-            <label>Color</label>
-            <select id="sel-color" className="form-control" onChange={e => this.setState({ selectedPixelTypeOption: e.target.value })}>
+            <label className="scanning-label mt-2">Color</label>
+            <select id="sel-color" className="form-control" value={this.state.selectedPixelTypeOption} onChange={e => this.setState({ selectedPixelTypeOption: e.target.value })}>
                 {this.state.pixelTypeOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
             </select>
         </div> : "";
 
         let pageSizes = this.state.pageSizeOptions.length > 0 ? <div id="size-group" className="twain-feature-group" >
-            <label>Page Size</label>
-            <select id="sel-page-size" className="form-control" onChange={e => this.setState({ selectedPageSizeOption: e.target.value })}>
+            <label className="scanning-label mt-2">Page Size</label>
+            <select id="sel-page-size" className="form-control" value={this.state.selectedPageSizeOption} onChange={e => this.setState({ selectedPageSizeOption: e.target.value })}>
                 {this.state.pageSizeOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
             </select>
         </div> : "";
 
         let duplexOptions = this.state.duplexOptions.length > 0 ? <div id="size-group" className="twain-feature-group" >
-            <label>Duplex Option:</label>
-            <select id="sel-page-size" className="form-control" onChange={e => this.setState({ selectedDuplexOption: e.target.value })}>
+            <label className="scanning-label mt-2">Duplex Option:</label>
+            <select id="sel-page-size" className="form-control" value={this.state.selectedDuplexOption} onChange={e => this.setState({ selectedDuplexOption: e.target.value })}>
                 {this.state.duplexOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
             </select>
         </div> : "";
 
         return (
+            this.state.isDisplayUI &&
             <div id="k1interface-hidden" className="show">
                 <div>
                     <div id="device-group" className="twain-feature-group">
-                        <label>Device</label>
-                        <select id="sel-scanner" className="form-control" onChange={this.onDeviceChange}>
+                            <label className="scanning-label">Device</label>
+                        <select id="sel-scanner" className="form-control" value={this.state.selectedDevice.id} onChange={e => this.onDeviceChange(e.target.value)}>
                             {this.state.discoveredDevices.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
                         </select>
                     </div>
 
                     {documentSource}
-
                     {resolutions}
-
                     {pixelTypes}
-
                     {pageSizes}
-
                     {duplexOptions}
 
-                    <label>Output File Name</label>
-                    <input id="sel-output-name" className="form-control" type="text" placeholder="Please enter a file name" onChange={e => this.setState({ outputFilename: e.target.value })} />
+                    <label className="scanning-label mt-2">Output File Name</label>
+                    <input id="sel-output-name" className="form-control" value={this.state.outputFilename} placeholder="Please enter a file name" onChange={e => this.setState({ outputFilename: e.target.value })} />
 
-                    <label>Output File Type</label>
+                    <label className="scanning-label mt-2">Output File Type</label>
                     <select id="sel-output" className="form-control" value={this.state.selectedFileTypeOption} onChange={e => this.setState({ selectedFileTypeOption: e.target.value })}>
                         {this.state.fileTypeOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
                     </select>
 
-                    <label>OCR Type</label>
+                    <label className="scanning-label mt-2">OCR Type</label>
                     <select id="sel-ocr-type" className="form-control" value={this.state.selectedOcrOption} onChange={e => this.setState({ selectedOcrOption: e.target.value })}>
                         {this.state.ocrOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
                     </select>
@@ -296,16 +265,8 @@ export class ScannerInterfaceHidden extends Component {
                                 <span>Scan</span>
                             </button>
                         </div>
-                        <input className="form-control filename" aria-label="Text input with multiple buttons" />
-                        {filesizePanel}
-                        {viewButton}
                     </div>
                 </div>
-
-                <br />
-
-                {successPanel}
-                {errorPanel}
             </div>
         );
     }

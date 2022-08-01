@@ -1,51 +1,78 @@
 import React, { Component } from 'react';
+import { isEmpty } from 'lodash';
+
 import { ScannerInterfaceVisible } from './ScannerInterfaceVisible';
 import { ScannerInterfaceWeb } from './ScannerInterfaceWeb';
 import { ScannerInterfaceHidden } from './ScannerInterfaceHidden';
 import { ScannerInterfaceDesktop } from './ScannerInterfaceDesktop';
+import { ScanCompleted } from './ScanCompleted';
+import { ScanError } from './ScanError';
+
+import '../lib/k1scanservice/css/k1ss.min.css';
 
 export class ScannerInterfaceOptions extends Component {
     constructor(props) {
         super(props);
-        this.state = { selectedInterface: -1 };
+        this.state = { 
+            selectedInterface: -1,
+            acquireResponse: '',
+            acquireError: '',
+         };
         this.handleInterfaceChange = this.handleInterfaceChange.bind(this);
+        this.completeAcquire = this.completeAcquire.bind(this);
     }
 
     handleInterfaceChange(val) {
-        this.setState({ selectedInterface: val.target.value });
+        this.setState({ 
+            selectedInterface: val.target.value,
+            acquireResponse: '',
+            acquireError: '',
+        });
+    }
+
+    completeAcquire(event) {
+        this.setState({ 
+            selectedInterface: -1,
+            acquireResponse: event.acquireResponse,
+            acquireError: event.acquireError,
+         });
     }
 
     render() {
-        var componentToRender;
-        var selectedInterface = parseInt(this.state.selectedInterface);        
+        let componentToRender;
+        let selectedInterface = parseInt(this.state.selectedInterface);
+        let successPanel = !isEmpty(this.state.acquireResponse) ? <ScanCompleted message={this.state.acquireResponse} /> : '';
+        let errorPanel =  !isEmpty(this.state.acquireError) ? <ScanError message={this.state.acquireError} /> : '';  
+
         switch (selectedInterface) {
             case 0:
-                componentToRender = <ScannerInterfaceHidden />;
+                componentToRender = <ScannerInterfaceHidden completeAcquire={this.completeAcquire}/>;
                 break;
             case 1:
-                componentToRender = <ScannerInterfaceVisible />;
+                componentToRender = <ScannerInterfaceVisible completeAcquire={this.completeAcquire}/>;
                 break;
             case 2:
-                componentToRender = <ScannerInterfaceWeb />;
+                componentToRender = <ScannerInterfaceWeb completeAcquire={this.completeAcquire}/>;
                 break;
             case 3:
-                componentToRender = <ScannerInterfaceDesktop />;
+                componentToRender = <ScannerInterfaceDesktop completeAcquire={this.completeAcquire}/>;
                 break;
             default:
-                componentToRender = "";
+                componentToRender = <>{successPanel}{errorPanel}</>;
+                break;
         }
 
         return (
             <div>
                 <div className="form-group">
-                    <label>Interface Option</label>
+                    <label className="scanning-label">Interface Option</label>
                     <div>
-                        <select id="interface-option-dropdown" onChange={this.handleInterfaceChange} className="form-control">
-                            <option>Please select...</option>
-                            <option value="0">Hidden: no user interface will be shown</option>
-                            <option value="1">Visible: WebTWAIN user interface will be shown</option>
-                            <option value="2">Web: only the WebTWAIN user interface will be shown</option>
-                            <option value="3">Desktop: only the scanner's TWAIN user interface will be shown</option>
+                        <select id="interface-option-dropdown" value={selectedInterface} onChange={this.handleInterfaceChange} className="form-control">
+                            <option value="-1">Please select...</option>
+                            <option value="0">Hidden : Not using Webtwain or Native UI</option>
+                            <option value="1">Visible : Uses Webtwain and Native UI</option>
+                            <option value="2">Web : only uses Webtwain UI</option>
+                            <option value="3">Desktop : only uses Native scanner UI</option>
                         </select>
                     </div>
                 </div>
