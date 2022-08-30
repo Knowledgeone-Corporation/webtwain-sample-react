@@ -2,10 +2,6 @@ import React, { Component } from 'react';
 import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_obfuscated.js';
 
 export class ScanCompleted extends Component {
-    constructor(props) {
-        super(props);
-    }
-
     downloadDocument() {
         K1WebTwain.SPADownloadDocument();
     }
