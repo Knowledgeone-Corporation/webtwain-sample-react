@@ -43,7 +43,7 @@ export class ScannerInterfaceDesktop extends Component {
                     self.setState({ 
                         isDisplayUI: true,
                     });
-                },4000)
+                }, 4000)
             });
         }).catch(err => {
             console.log(err);
@@ -88,22 +88,30 @@ export class ScannerInterfaceDesktop extends Component {
                 });
             })
             .catch(err => {
-                console.error(err);
-                if (!!err.responseText) {
-                    this.props.completeAcquire({
-                        acquireResponse: '',
-                        acquireError: err.responseText,
-                    });
-                }
-
-                if (!!err.responseJSON) {
-                    try {
+                if(err) {
+                    if (!!err.responseText) {
                         this.props.completeAcquire({
                             acquireResponse: '',
-                            acquireError: JSON.stringify(err.responseJSON, null, 4),
+                            acquireError: err.responseText,
                         });
-                    } catch (e) {
-                        console.warn(e);
+                    }
+    
+                    if (!!err.responseJSON) {
+                        try {
+                            this.props.completeAcquire({
+                                acquireResponse: '',
+                                acquireError: JSON.stringify(err.responseJSON, null, 4),
+                            });
+                        } catch (e) {
+                            console.warn(e);
+                        }
+                    }
+                    
+                    if (err.statusText && err.statusText === 'timeout') {
+                        this.props.completeAcquire({
+                            acquireResponse: '',
+                            acquireError: 'Timeout error while processing/uploading scanned documents.',
+                        });
                     }
                 }
             });
