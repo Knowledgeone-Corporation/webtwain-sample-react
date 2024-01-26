@@ -14,9 +14,22 @@ export class ScannerInterfaceWeb extends Component {
         let self = this;
         let configuration = {
             onComplete: function (response) {
+                let responseMessage = response.uploadResponse;
+
+                if (response.saveToType === K1WebTwain.Options.SaveToType.Local) {
+                    responseMessage = {
+                        filename: response.filename,
+                        fileSize: `${response.fileLength} (${response.sizeDisplay})`,
+                        fileExtention: response.extension
+                    };
+
+                    K1WebTwain.SPADownloadDocument();
+                }
+
                 self.props.completeAcquire({
-                    acquireResponse: JSON.stringify(response.uploadResponse, null, 4),
+                    acquireResponse: JSON.stringify(responseMessage, null, 4),
                     acquireError: '',
+                    saveToType: response.saveToType
                 });
             }, //function called when scan complete
             viewButton: null, //This is optional. Specify a element that when clicked will view scanned document

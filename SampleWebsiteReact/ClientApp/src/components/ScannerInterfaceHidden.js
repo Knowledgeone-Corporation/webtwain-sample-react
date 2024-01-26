@@ -22,6 +22,8 @@ export class ScannerInterfaceHidden extends Component {
             selectedResolutionOption: 0,
             ocrOptions: [],
             selectedOcrOption: K1WebTwain.Options.OcrType.None,
+            saveToTypeOptions: [],
+            selectedSaveToOption: K1WebTwain.Options.SaveToType.Upload,
             fileTypeOptions: [],
             selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.PDF,
             outputFilename: '',
@@ -76,11 +78,13 @@ export class ScannerInterfaceHidden extends Component {
             let mappedDevices = devices.map(device => ({ value: device.id, display: device.name }));
             let mappedOcrTypes = convertRawOptions(K1WebTwain.Options.OcrType, true);
             let mappedFileTypeOptions = convertRawOptions(K1WebTwain.Options.OutputFiletype, true);
-            
+            let mappedSaveToTypeOptions = convertRawOptions(K1WebTwain.Options.SaveToType, true);
+
             this.setState({
                 discoveredDevices: renderOptions(mappedDevices),
                 ocrOptions: renderOptions(mappedOcrTypes),
                 fileTypeOptions: renderOptions(mappedFileTypeOptions),
+                saveToTypeOptions: renderOptions(mappedSaveToTypeOptions),
                 outputFilename: generateScanFileName()
             });
 
@@ -166,14 +170,28 @@ export class ScannerInterfaceHidden extends Component {
             duplexId: this.state.selectedDuplexOption,
             filetype: this.state.selectedFileTypeOption,
             ocrType: this.state.selectedOcrOption,
+            saveToType: this.state.selectedSaveToOption,
             filename: this.state.outputFilename,
         };
 
         K1WebTwain.Acquire(acquireRequest)
             .then(response => {
+                let responseMessage = response.uploadResponse;
+
+                if (this.state.selectedSaveToOption === K1WebTwain.Options.SaveToType.Local) {
+                    responseMessage = {
+                        filename: response.filename,
+                        fileSize: `${response.fileLength} (${response.sizeDisplay})`,
+                        fileExtention: response.extension
+                    };
+
+                    K1WebTwain.SPADownloadDocument();
+                }
+
                 this.props.completeAcquire({
-                    acquireResponse: JSON.stringify(response.uploadResponse, null, 4),
+                    acquireResponse: JSON.stringify(responseMessage, null, 4),
                     acquireError: '',
+                    saveToType: this.state.selectedSaveToOption
                 });
             })
             .catch(err => {
@@ -270,7 +288,13 @@ export class ScannerInterfaceHidden extends Component {
                     <label className="scanning-label mt-2">OCR Type</label>
                     <select id="sel-ocr-type" className="form-control" value={this.state.selectedOcrOption} onChange={e => this.setState({ selectedOcrOption: e.target.value })}>
                         {this.state.ocrOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
+                        </select>
+
+                    <label className="scanning-label mt-2">Save To</label>
+                    <select id="sel-save-to" className="form-control" value={this.state.selectedSaveToOption} onChange={e => this.setState({ selectedSaveToOption: parseInt(e.target.value) })}>
+                        {this.state.saveToTypeOptions.map((type) => <option key={type.value} value={type.value}>{type.display}</option>)}
                     </select>
+
 
                     <br />
 

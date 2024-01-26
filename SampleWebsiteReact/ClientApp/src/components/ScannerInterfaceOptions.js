@@ -9,6 +9,7 @@ import { ScanCompleted } from './ScanCompleted';
 import { ScanError } from './ScanError';
 
 import '../lib/k1scanservice/css/k1ss.min.css';
+import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_obfuscated';
 
 export class ScannerInterfaceOptions extends Component {
     constructor(props) {
@@ -17,6 +18,7 @@ export class ScannerInterfaceOptions extends Component {
             selectedInterface: -1,
             acquireResponse: '',
             acquireError: '',
+            saveToType: K1WebTwain.Options.SaveToType.Upload
          };
         this.handleInterfaceChange = this.handleInterfaceChange.bind(this);
         this.completeAcquire = this.completeAcquire.bind(this);
@@ -27,6 +29,7 @@ export class ScannerInterfaceOptions extends Component {
             selectedInterface: val.target.value,
             acquireResponse: '',
             acquireError: '',
+            saveToType: K1WebTwain.Options.SaveToType.Upload
         });
     }
 
@@ -35,13 +38,14 @@ export class ScannerInterfaceOptions extends Component {
             selectedInterface: -1,
             acquireResponse: event.acquireResponse,
             acquireError: event.acquireError,
+            saveToType: event.saveToType ?? K1WebTwain.Options.SaveToType.Upload
          });
     }
 
     render() {
         let componentToRender;
         let selectedInterface = parseInt(this.state.selectedInterface);
-        let successPanel = !isEmpty(this.state.acquireResponse) ? <ScanCompleted message={this.state.acquireResponse} /> : '';
+        let successPanel = !isEmpty(this.state.acquireResponse) ? <ScanCompleted message={this.state.acquireResponse} saveToType={this.state.saveToType} /> : '';
         let errorPanel =  !isEmpty(this.state.acquireError) ? <ScanError message={this.state.acquireError} /> : '';  
 
         switch (selectedInterface) {

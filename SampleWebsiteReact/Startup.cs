@@ -3,7 +3,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using SampleWebsiteReact.Utils;
+using System.IO;
 
 namespace SampleWebsiteReact
 {
@@ -40,6 +43,17 @@ namespace SampleWebsiteReact
             {
                 app.UseExceptionHandler("/Error");
             }
+
+            app.UseProtectFolder(new ProtectFolderOptions
+            {
+                Path = "/Keys"
+            });
+
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "Keys")),
+                RequestPath = "/Keys"
+            });
 
             app.UseStaticFiles();
 
