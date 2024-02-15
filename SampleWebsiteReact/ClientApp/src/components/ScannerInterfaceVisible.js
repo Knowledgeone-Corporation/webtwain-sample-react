@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import $ from 'jquery';
-import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_obfuscated.js';
+import { K1WebTwain } from '../lib/k1scanservice/js/k1ss.js';
 
 export class ScannerInterfaceVisible extends Component {
     constructor(props) {
@@ -14,15 +14,33 @@ export class ScannerInterfaceVisible extends Component {
         let self = this;
         let configuration = {
             onComplete: function (response) {
+                let responseMessage = response.uploadResponse;
+
+                if (response.saveToType === K1WebTwain.Options.SaveToType.Local) {
+                    responseMessage = {
+                        filename: response.filename,
+                        fileSize: `${response.fileLength} (${response.sizeDisplay})`,
+                        fileExtention: response.extension
+                    };
+                }
+
                 self.props.completeAcquire({
-                    acquireResponse: JSON.stringify(response.uploadResponse, null, 4),
+                    acquireResponse: JSON.stringify(responseMessage, null, 4),
                     acquireError: '',
+                    saveToType: response.saveToType
                 });
             }, //function called when scan complete
             viewButton: null, //This is optional. Specify a element that when clicked will view scanned document
             fileUploadURL: document.location.origin + '/Home/UploadFile', //This is the service that the scanned document will be uploaded to when complete
+            fileUploadHeaders: [
+                {
+                    key: "X-Access-Token",
+                    value: "Test"
+                }
+            ], // This is optional. Specify additional headers for the request to the upload server.
             clientID: "" + Date.now(), //This is a way to identify the user who is scanning.  It should be unique per user.  Session ID could be used if no user logged in
             setupFile: document.location.origin + '/Home/DownloadSetup', //location of the installation file if service doesn't yet exist
+            licenseFile: document.location.origin + '/Home/K1Licence', //location of the license file If it unset, value will fallback to Current website url + '/Home/K1Licence'
             interfacePath: document.location.origin + "/interface.html", // This is optional if your application lives under a subdomain.
             scannerInterface: K1WebTwain.Options.ScannerInterface.Visible,
             scanButton: $("#scanbtn"), // the scan button

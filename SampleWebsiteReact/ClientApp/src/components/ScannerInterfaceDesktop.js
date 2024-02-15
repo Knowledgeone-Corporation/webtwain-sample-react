@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import $ from 'jquery';
-import { K1WebTwain } from '../lib/k1scanservice/js/k1ss_obfuscated.js';
+import { K1WebTwain } from '../lib/k1scanservice/js/k1ss.js';
 import { convertRawOptions, generateScanFileName, renderOptions } from '../utils/scanningUtils.js';
 
 export class ScannerInterfaceDesktop extends Component {
@@ -11,6 +11,8 @@ export class ScannerInterfaceDesktop extends Component {
             selectedDevice: 0,
             ocrOptions: [],
             selectedOcrOption: K1WebTwain.Options.OcrType.None,
+            saveToTypeOptions: [],
+            selectedSaveToOption: K1WebTwain.Options.SaveToType.Upload,
             fileTypeOptions: [],
             selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.PDF,
             outputFilename: '',
@@ -25,8 +27,15 @@ export class ScannerInterfaceDesktop extends Component {
             onComplete: function () { }, //function called when scan complete
             viewButton: null, //This is optional. Specify a element that when clicked will view scanned document
             fileUploadURL: document.location.origin + '/Home/UploadFile', //This is the service that the scanned document will be uploaded to when complete
+            fileUploadHeaders: [
+                {
+                    key: "X-Access-Token",
+                    value: "Test"
+                }
+            ], // This is optional. Specify additional headers for the request to the upload server.
             clientID: "" + Date.now(), //This is a way to identify the user who is scanning.  It should be unique per user.  Session ID could be used if no user logged in
             setupFile: document.location.origin + '/Home/DownloadSetup', //location of the installation file if service doesn't yet exist
+            licenseFile: document.location.origin + '/Home/K1Licence', //location of the license file If it unset, value will fallback to Current website url + '/Home/K1Licence'
             interfacePath: document.location.origin + "/interface.html", // This is optional if your application lives under a subdomain.
             scannerInterface: K1WebTwain.Options.ScannerInterface.Desktop,
             scanButton: $("#scanbtn"), // the scan button
@@ -56,11 +65,13 @@ export class ScannerInterfaceDesktop extends Component {
             let mappedDevices = devices.map(device => ({ value: device.id, display: device.name }));
             let mappedOcrTypes = convertRawOptions(K1WebTwain.Options.OcrType, true);
             let mappedFileTypeOptions = convertRawOptions(K1WebTwain.Options.OutputFiletype, true);
+            let mappedSaveToTypeOptions = convertRawOptions(K1WebTwain.Options.SaveToType, true);
             
             this.setState({
                 discoveredDevices: renderOptions(mappedDevices),
                 ocrOptions: renderOptions(mappedOcrTypes),
                 fileTypeOptions: renderOptions(mappedFileTypeOptions),
+                saveToTypeOptions: renderOptions(mappedSaveToTypeOptions),
                 outputFilename: generateScanFileName()
             });
         }).catch(err => {
@@ -78,13 +89,25 @@ export class ScannerInterfaceDesktop extends Component {
             filetype: this.state.selectedFileTypeOption,
             ocrType: this.state.selectedOcrOption,
             filename: this.state.outputFilename,
+            saveToType: this.state.selectedSaveToOption,
         };
 
         K1WebTwain.Acquire(acquireRequest)
             .then(response => {
+                let responseMessage = response.uploadResponse;
+
+                if (this.state.selectedSaveToOption === K1WebTwain.Options.SaveToType.Local) {
+                    responseMessage = {
+                        filename: response.filename,
+                        fileSize: `${response.fileLength} (${response.sizeDisplay})`,
+                        fileExtention: response.extension
+                    };
+                }
+
                 this.props.completeAcquire({
-                    acquireResponse: JSON.stringify(response.uploadResponse, null, 4),
+                    acquireResponse: JSON.stringify(responseMessage, null, 4),
                     acquireError: '',
+                    saveToType: this.state.selectedSaveToOption
                 });
             })
             .catch(err => {
@@ -140,6 +163,11 @@ export class ScannerInterfaceDesktop extends Component {
                     <label className="scanning-label mt-2">OCR Type</label>
                     <select id="sel-ocr-type" className="form-control" value={this.state.selectedOcrOption} onChange={e => this.setState({ selectedOcrOption: e.target.value })}>
                         {this.state.ocrOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
+                    </select>
+
+                    <label className="scanning-label mt-2">Save To</label>
+                    <select id="sel-save-to" className="form-control" value={this.state.selectedSaveToOption} onChange={e => this.setState({ selectedSaveToOption: parseInt(e.target.value) })}>
+                        {this.state.saveToTypeOptions.map((type) => <option key={type.value} value={type.value}>{type.display}</option>)}
                     </select>
 
                     <br />
