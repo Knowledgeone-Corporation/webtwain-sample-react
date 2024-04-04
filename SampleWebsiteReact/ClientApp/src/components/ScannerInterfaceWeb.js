@@ -52,11 +52,11 @@ export class ScannerInterfaceWeb extends Component {
             });
 
             K1WebTwain.ResetService().then(function () {
-                setTimeout(() => {
+                //setTimeout(() => {
                     self.setState({ 
                         isDisplayUI: true,
                     });
-                },4000)
+                //},4000)
             });
         }).catch(err => {
             console.log(err);
@@ -71,7 +71,7 @@ export class ScannerInterfaceWeb extends Component {
                 <div className="input-group">
                     <div className="input-group-btn">
                         <button id="scanbtn" type="button" className="btn btn-primary" aria-label="Bold">
-                            <span>Scan</span>
+                            <span>Initialize</span>
                         </button>
                     </div>
                 </div>

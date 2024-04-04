@@ -8,7 +8,7 @@ export class ScannerInterfaceDesktop extends Component {
         super(props);
         this.state = {
             discoveredDevices: [],
-            selectedDevice: 0,
+            selectedDevice: -1,
             ocrOptions: [],
             selectedOcrOption: K1WebTwain.Options.OcrType.None,
             saveToTypeOptions: [],
@@ -16,7 +16,8 @@ export class ScannerInterfaceDesktop extends Component {
             fileTypeOptions: [],
             selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.PDF,
             outputFilename: '',
-            isDisplayUI: false
+            isDisplayUI: false,
+            isDisableScanButton: true
         };
         this.handleAcquireClick = this.handleAcquireClick.bind(this);
     }
@@ -47,12 +48,12 @@ export class ScannerInterfaceDesktop extends Component {
             });
 
             K1WebTwain.ResetService().then(function () {
-                setTimeout(() => {
+                //setTimeout(() => {
                     self.renderSelection();
                     self.setState({ 
                         isDisplayUI: true,
                     });
-                }, 4000)
+                //}, 4000)
             });
         }).catch(err => {
             console.log(err);
@@ -77,6 +78,14 @@ export class ScannerInterfaceDesktop extends Component {
         }).catch(err => {
             console.error(err);
         });
+    }
+
+    onDeviceChange(e) {
+        let device = e.target.value;
+        this.setState({
+            isDisableScanButton: device.id === -1,
+            selectedDevice: device
+        })
     }
 
     handleAcquireClick() {
@@ -147,7 +156,10 @@ export class ScannerInterfaceDesktop extends Component {
                 <div>
                     <div id="device-group" className="twain-feature-group">
                         <label className="scanning-label">Device</label>
-                        <select id="sel-scanner" className="form-control" value={this.state.selectedDevice} onChange={e => this.setState({ selectedDevice: e.target.value })}>
+                            <select id="sel-scanner" className="form-control" value={this.state.selectedDevice} onChange={e => this.setState({
+                                selectedDevice: e.target.value,
+                                isDisableScanButton: parseInt(e.target.value) === -1
+                            })}>
                             {this.state.discoveredDevices.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
                         </select>
                     </div>
@@ -174,7 +186,7 @@ export class ScannerInterfaceDesktop extends Component {
 
                     <div className="input-group">
                         <div className="input-group-btn">
-                            <button id="btn-acquire" type="button" className="btn btn-primary" aria-label="Bold" onClick={this.handleAcquireClick}>
+                                <button id="btn-acquire" type="button" className="btn btn-primary" aria-label="Bold" onClick={this.handleAcquireClick} disabled={this.state.isDisableScanButton}>
                                 <span>Scan</span>
                             </button>
                         </div>
