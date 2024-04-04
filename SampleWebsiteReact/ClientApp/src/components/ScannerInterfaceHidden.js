@@ -27,7 +27,8 @@ export class ScannerInterfaceHidden extends Component {
             fileTypeOptions: [],
             selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.PDF,
             outputFilename: '',
-            isDisplayUI: false
+            isDisplayUI: false,
+            isDisableScanButton: true
         };
         this.handleAcquireClick = this.handleAcquireClick.bind(this);
         this.onDeviceChange = this.onDeviceChange.bind(this);
@@ -60,12 +61,12 @@ export class ScannerInterfaceHidden extends Component {
             });
 
             K1WebTwain.ResetService().then(function () {
-                setTimeout(() => {
+                //setTimeout(() => {
                     self.renderSelection();
                     self.setState({ 
                         isDisplayUI: true,
                     });
-                },4000)
+                //},4000)
             });
         }).catch(err => {
             console.log(err);
@@ -96,7 +97,7 @@ export class ScannerInterfaceHidden extends Component {
 
     onDeviceChange(deviceId) {
         K1WebTwain.Device(deviceId).then(deviceInfo => {
-            if(!isEmpty(deviceInfo)) {
+            if (!isEmpty(deviceInfo)) {
                 let documentSourceOptions = Object.keys(deviceInfo.documentSourceIds).map((key) => {
                     return { value: key, display: deviceInfo.documentSourceIds[key].name };
                 });
@@ -109,9 +110,26 @@ export class ScannerInterfaceHidden extends Component {
                     pixelTypeOptions: [],
                     resolutionOptions: [],
                     documentSourceOptions: renderOptions(documentSourceOptions),
+                    isDisableScanButton: false
                 });
 
                 this.onDocumentSourceChange(defaultOptionsValue(documentSourceOptions));
+            } else {
+                this.setState({
+                    selectedDevice: {
+                        id: this.state.discoveredDevices[0].value,
+                        name: this.state.discoveredDevices[0].display,
+                        isDefault: true,
+                        documentSourceIds: {}
+                    },
+                    selectedDocumentSource: 0,
+                    duplexOptions: [],
+                    pageSizeOptions: [],
+                    pixelTypeOptions: [],
+                    resolutionOptions: [],
+                    documentSourceOptions: [],
+                    isDisableScanButton: true
+                });
             }
         }).catch(err => {
             console.log(err);
@@ -123,6 +141,7 @@ export class ScannerInterfaceHidden extends Component {
                 pixelTypeOptions: [],
                 resolutionOptions: [],
                 documentSourceOptions: [],
+                isDisableScanButton: true
             });
         })
     }
@@ -223,7 +242,7 @@ export class ScannerInterfaceHidden extends Component {
     }
 
     render() {
-        let documentSource = !isEmpty(this.state.selectedDevice) ? <div id="source-group" className="twain-feature-group" >
+        let documentSource = (!isEmpty(this.state.selectedDevice) && this.state.selectedDevice.id !== -1) ? <div id="source-group" className="twain-feature-group" >
             <label className="scanning-label mt-2">Document Source</label>
             <select id="sel-document-source" className="form-control" value={this.state.selectedDocumentSource} onChange={e => this.onDocumentSourceChange(e.target.value)}>
                 {this.state.documentSourceOptions.map((device) => <option key={device.value} value={device.value}>{device.display}</option>)}
@@ -298,7 +317,7 @@ export class ScannerInterfaceHidden extends Component {
 
                     <div className="input-group">
                         <div className="input-group-btn">
-                            <button id="btn-acquire" type="button" className="btn btn-primary" aria-label="Bold" onClick={this.handleAcquireClick}>
+                                <button id="btn-acquire" type="button" className="btn btn-primary" aria-label="Bold" onClick={this.handleAcquireClick} disabled={this.state.isDisableScanButton}>
                                 <span>Scan</span>
                             </button>
                         </div>
