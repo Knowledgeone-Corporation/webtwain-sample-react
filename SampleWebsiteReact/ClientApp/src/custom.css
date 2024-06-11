@@ -52,3 +52,18 @@ code {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+
+.section-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.filetype-restriction {
+    color: #337ab7;
+    font-size: 13px;
+    margin-left: 4px;
+}
+
+.finalize-section div {
+    margin-top: 6px;
+}

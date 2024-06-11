@@ -67,7 +67,7 @@ export class ScannerInterfaceVisible extends Component {
     render() {
         return (
             <div id="k1interface-visible" className={this.state.isDisplayUI ? "show" : "hide"}>
-                <div><label className="scanning-label">Scan Document:</label></div>
+                <div><label className="scanning-label">Initialize Scan Process:</label></div>
                 <div className="input-group">
                     <div className="input-group-btn">
                         <button id="scanbtn" type="button" className="btn btn-primary" aria-label="Bold">

@@ -1,4 +1,5 @@
 import { isEmpty } from "lodash";
+import { K1WebTwain } from '../lib/k1scanservice/js/k1ss.js';
 
 export const generateScanFileName = () => {
     return 'ScanFile' + (Math.floor((Math.random() * 10000) + 100000));
@@ -16,4 +17,53 @@ export const renderOptions = (options) => {
 
 export const defaultOptionsValue = (options) => {
     return options.length > 0 && !isEmpty(options[0]) ? options[0].value : 0;
+}
+
+export const saveDefaultScanSettings = (outputType, ocrType, scanSource) => {
+    let isUseOcr = (outputType === K1WebTwain.Options.OutputFiletype.PDF ||
+        outputType === K1WebTwain.Options.OutputFiletype['PDF/A']) &&
+        parseInt(ocrType) !== K1WebTwain.Options.OcrType.None;
+
+    let strSettings = JSON.stringify({
+        ScanType: outputType,
+        UseOCR: isUseOcr,
+        OCRType: ocrType,
+        ScanSource: scanSource
+    });
+
+    let set_cookies = function (name, value, days) {
+        let expires = "";
+        if (days) {
+            let date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    };
+
+    set_cookies("DefaultScanSettings", strSettings, 365);
+}
+
+export const getDefaultScanSettings = () => {
+    let get_cookie = function (name) {
+        let nameEQ = name + "=";
+        let ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    };
+
+    let strCookie = get_cookie("DefaultScanSettings");
+    if (strCookie != null) {
+        try {
+            return JSON.parse(strCookie);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    return null;
 }
