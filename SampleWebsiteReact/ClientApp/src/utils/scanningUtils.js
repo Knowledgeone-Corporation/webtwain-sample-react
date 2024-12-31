@@ -24,12 +24,21 @@ export const saveDefaultScanSettings = (outputType, ocrType, scanSource) => {
         outputType === K1WebTwain.Options.OutputFiletype['PDF/A']) &&
         parseInt(ocrType) !== K1WebTwain.Options.OcrType.None;
 
-    let strSettings = JSON.stringify({
-        ScanType: outputType,
-        UseOCR: isUseOcr,
-        OCRType: ocrType,
-        ScanSource: scanSource
-    });
+    let scanSettings = getDefaultScanSettings();
+
+    if (scanSettings) {
+        scanSettings.ScanType = outputType;
+        scanSettings.UseOCR = isUseOcr;
+        scanSettings.OCRType = ocrType;
+        scanSettings.ScanSource = scanSource;
+    } else {
+        scanSettings = {
+            ScanType: outputType,
+            UseOCR: isUseOcr,
+            OCRType: ocrType,
+            ScanSource: scanSource
+        }
+    }
 
     let set_cookies = function (name, value, days) {
         let expires = "";
@@ -41,7 +50,7 @@ export const saveDefaultScanSettings = (outputType, ocrType, scanSource) => {
         document.cookie = name + "=" + (value || "") + expires + "; path=/";
     };
 
-    set_cookies("DefaultScanSettings", strSettings, 365);
+    set_cookies("DefaultScanSettings", JSON.stringify(scanSettings), 365);
 }
 
 export const getDefaultScanSettings = () => {
