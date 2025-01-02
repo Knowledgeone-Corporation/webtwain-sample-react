@@ -44,6 +44,10 @@ export class ScannerInterfaceWeb extends Component {
             interfacePath: document.location.origin + "/interface.html", // This is optional if your application lives under a subdomain.
             scannerInterface: K1WebTwain.Options.ScannerInterface.Web,
             scanButton: $("#scanbtn"), // the scan button
+            barcodeRecognitionOption: {
+                barcodeFormats: [], // Supported value: K1WebTwain.Options.BarcodeFormat | Default: Empty (If empty, recognize all barcode formats)
+                barcodeOrientations: [],  //  Supported value: K1WebTwain.Options.BarcodeOrientation | Default: Empty (If empty, recognize barcode in all orientations)
+            }, // options to config barcode recognitions
         };
 
         K1WebTwain.Configure(configuration).then(() => {
