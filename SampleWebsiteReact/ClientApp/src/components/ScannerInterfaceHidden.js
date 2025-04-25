@@ -6,8 +6,9 @@ import {
     convertRawOptions,
     defaultOptionsValue,
     generateScanFileName,
-    getDefaultScanSettings,
     saveDefaultScanSettings,
+    getDefaultScanSettings,
+    getScannerDetails,
     renderOptions,
 } from "../utils/scanningUtils.js";
 
@@ -41,7 +42,7 @@ export class ScannerInterfaceHidden extends Component {
         this.renderSelection = this.renderSelection.bind(this);
         this.handleAcquireClick = this.handleAcquireClick.bind(this);
         this.handleDeviceChange = this.handleDeviceChange.bind(this);
-        this.onDocumentSourceChange = this.onDocumentSourceChange.bind(this);
+        this.onDocumentSourceChange = this.handleDocumentSourceChange.bind(this);
         this.handleFileTypeChange = this.handleFileTypeChange.bind(this);
         this.handlOcrTypeChange = this.handlOcrTypeChange.bind(this);
         this.handleCancelFinalization = this.handleCancelFinalization.bind(this);
@@ -115,14 +116,15 @@ export class ScannerInterfaceHidden extends Component {
                 });
 
                 let scanSettings = getDefaultScanSettings();
-                if (scanSettings) {
+
+                if (scanSettings?.ScannerDetails?.ScanSource) {
                     this.setState({
                         selectedFileTypeOption: scanSettings.ScanType,
                         selectedOcrOption: scanSettings.UseOCR
                             ? scanSettings.OCRType
                             : K1WebTwain.Options.OcrType.None
                     });
-                    this.handleDeviceChange(parseInt(scanSettings.ScanSource));
+                    this.handleDeviceChange(parseInt(scanSettings.ScannerDetails.ScanSource));
                 } else {
                     this.handleDeviceChange(defaultOptionsValue(mappedDevices));
                 }
@@ -135,6 +137,8 @@ export class ScannerInterfaceHidden extends Component {
     handleDeviceChange(deviceId) {
         K1WebTwain.Device(deviceId)
             .then((deviceInfo) => {
+                let defaultSettings = getDefaultScanSettings();
+
                 if (!isEmpty(deviceInfo)) {
                     let documentSourceOptions = Object.keys(
                         deviceInfo.documentSourceIds
@@ -145,9 +149,11 @@ export class ScannerInterfaceHidden extends Component {
                         };
                     });
 
+                    const defaultDocumentSource = defaultSettings?.ScannerDetails?.DocumentSource ?? defaultOptionsValue(documentSourceOptions);
+
                     this.setState({
                         selectedDevice: deviceInfo,
-                        selectedDocumentSource: defaultOptionsValue(documentSourceOptions),
+                        selectedDocumentSource: defaultDocumentSource,
                         duplexOptions: [],
                         pageSizeOptions: [],
                         pixelTypeOptions: [],
@@ -156,9 +162,7 @@ export class ScannerInterfaceHidden extends Component {
                         isDisableScanButton: false,
                     });
 
-                    this.onDocumentSourceChange(
-                        defaultOptionsValue(documentSourceOptions)
-                    );
+                    this.handleDocumentSourceChange(defaultDocumentSource);
                 } else {
                     this.setState({
                         selectedDevice: {
@@ -177,12 +181,9 @@ export class ScannerInterfaceHidden extends Component {
                     });
                 }
 
-                let defaultSettings = getDefaultScanSettings();
-                saveDefaultScanSettings(
-                    defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
-                    defaultSettings?.OCRType ?? this.state.selectedOcrOption,
-                    deviceId
-                );
+                let scannerDetails = getScannerDetails(defaultSettings);
+                scannerDetails.ScanSource = deviceId;
+                this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
             })
             .catch((err) => {
                 console.log(err);
@@ -199,7 +200,10 @@ export class ScannerInterfaceHidden extends Component {
             });
     }
 
-    onDocumentSourceChange(documentSourceId) {
+    handleDocumentSourceChange(documentSourceId) {
+        let defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+
         let selectedDocumentSource =
             this.state.selectedDevice.documentSourceIds[documentSourceId];
 
@@ -220,16 +224,59 @@ export class ScannerInterfaceHidden extends Component {
         }
 
         this.setState({
-            selectedDuplexOption: defaultOptionsValue(duplexOptions),
-            selectedPageSizeOption: defaultOptionsValue(pageSizeOptions),
-            selectedPixelTypeOption: defaultOptionsValue(pixelTypeOptions),
-            selectedResolutionOption: defaultOptionsValue(resolutionOptions),
+            selectedDuplexOption: scannerDetails?.Duplex ?? defaultOptionsValue(duplexOptions),
+            selectedPageSizeOption: scannerDetails?.PageSize ?? defaultOptionsValue(pageSizeOptions),
+            selectedPixelTypeOption: scannerDetails?.Color ?? defaultOptionsValue(pixelTypeOptions),
+            selectedResolutionOption: scannerDetails?.Resolution ?? defaultOptionsValue(resolutionOptions),
             selectedDocumentSource: documentSourceId,
             duplexOptions: renderOptions(duplexOptions),
             pageSizeOptions: renderOptions(pageSizeOptions),
             pixelTypeOptions: renderOptions(pixelTypeOptions),
             resolutionOptions: renderOptions(resolutionOptions),
         });
+
+        scannerDetails.DocumentSource = documentSourceId;
+        this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
+    }
+
+    handleResolutionChange(selectedResolution) {
+        this.setState({ selectedResolutionOption: selectedResolution })
+        let defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+        scannerDetails.Resolution = selectedResolution;
+        this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
+    }
+
+    handlePixelTypeChange(selectedPixelType) {
+        this.setState({ selectedPixelTypeOption: selectedPixelType })
+        let defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+        scannerDetails.Color = selectedPixelType;
+        this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
+    }
+
+    handlePageSizeChange(selectedPageSize) {
+        this.setState({ selectedPageSizeOption: selectedPageSize })
+        let defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+        scannerDetails.PageSize = selectedPageSize;
+        this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
+    }
+
+    handleDuplexChange(selectedDuplex) {
+        this.setState({ selectedDuplexOption: selectedDuplex })
+        let defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+        scannerDetails.Duplex = selectedDuplex;
+        this.saveDefaultScannerDetails(defaultSettings, scannerDetails);
+    }
+
+    saveDefaultScannerDetails(defaultSettings, scannerDetails) {
+        saveDefaultScanSettings(
+            defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
+            defaultSettings?.OCRType ?? this.state.selectedOcrOption,
+            scannerDetails
+        );
     }
 
     handleAcquireClick() {
@@ -258,10 +305,10 @@ export class ScannerInterfaceHidden extends Component {
         let outputType = e.target.value;
         this.setState({ selectedFileTypeOption: outputType });
         let defaultSettings = getDefaultScanSettings();
+
         saveDefaultScanSettings(
             outputType,
-            defaultSettings?.OCRType ?? this.state.selectedOcrOption,
-            defaultSettings?.ScanSource ?? this.state.selectedDevice
+            defaultSettings?.OCRType ?? this.state.selectedOcrOption
         );
     }
 
@@ -269,10 +316,10 @@ export class ScannerInterfaceHidden extends Component {
         let ocrType = e.target.value;
         this.setState({ selectedOcrOption: ocrType });
         let defaultSettings = getDefaultScanSettings();
+
         saveDefaultScanSettings(
             defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
-            ocrType,
-            defaultSettings?.ScanSource ?? this.state.selectedDevice
+            ocrType
         );
     }
 
@@ -380,7 +427,7 @@ export class ScannerInterfaceHidden extends Component {
                         id="sel-document-source"
                         className="form-control"
                         value={this.state.selectedDocumentSource}
-                        onChange={(e) => this.onDocumentSourceChange(e.target.value)}
+                        onChange={(e) => this.handleDocumentSourceChange(e.target.value)}
                     >
                         {this.state.documentSourceOptions.map((device) => (
                             <option key={device.value} value={device.value}>
@@ -401,9 +448,7 @@ export class ScannerInterfaceHidden extends Component {
                         id="sel-dpi"
                         className="form-control"
                         value={this.state.selectedResolutionOption}
-                        onChange={(e) =>
-                            this.setState({ selectedResolutionOption: e.target.value })
-                        }
+                        onChange={(e) => this.handleResolutionChange(e.target.value)}
                     >
                         {this.state.resolutionOptions.map((device) => (
                             <option key={device.value} value={device.value}>
@@ -424,9 +469,7 @@ export class ScannerInterfaceHidden extends Component {
                         id="sel-color"
                         className="form-control"
                         value={this.state.selectedPixelTypeOption}
-                        onChange={(e) =>
-                            this.setState({ selectedPixelTypeOption: e.target.value })
-                        }
+                        onChange={(e) => this.handlePixelTypeChange(e.target.value)}
                     >
                         {this.state.pixelTypeOptions.map((device) => (
                             <option key={device.value} value={device.value}>
@@ -447,9 +490,7 @@ export class ScannerInterfaceHidden extends Component {
                         id="sel-page-size"
                         className="form-control"
                         value={this.state.selectedPageSizeOption}
-                        onChange={(e) =>
-                            this.setState({ selectedPageSizeOption: e.target.value })
-                        }
+                        onChange={(e) => this.handlePageSizeChange(e.target.value)}
                     >
                         {this.state.pageSizeOptions.map((device) => (
                             <option key={device.value} value={device.value}>
@@ -470,9 +511,7 @@ export class ScannerInterfaceHidden extends Component {
                         id="sel-page-size"
                         className="form-control"
                         value={this.state.selectedDuplexOption}
-                        onChange={(e) =>
-                            this.setState({ selectedDuplexOption: e.target.value })
-                        }
+                        onChange={(e) => this.handleDuplexChange(e.target.value)}
                     >
                         {this.state.duplexOptions.map((device) => (
                             <option key={device.value} value={device.value}>
