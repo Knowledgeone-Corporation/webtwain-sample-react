@@ -52,11 +52,9 @@ export class ScannerInterfaceWeb extends Component {
             });
 
             K1WebTwain.ResetService().then(function () {
-                //setTimeout(() => {
                     self.setState({ 
                         isDisplayUI: true,
                     });
-                //},4000)
             });
         }).catch(err => {
             console.log(err);

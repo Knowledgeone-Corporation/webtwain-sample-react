@@ -19,17 +19,26 @@ export const defaultOptionsValue = (options) => {
     return options.length > 0 && !isEmpty(options[0]) ? options[0].value : 0;
 }
 
-export const saveDefaultScanSettings = (outputType, ocrType, scanSource) => {
-    let isUseOcr = (outputType === K1WebTwain.Options.OutputFiletype.PDF ||
+export const saveDefaultScanSettings = (outputType, ocrType, scannerDetails = null) => {
+    let scanSettings = getDefaultScanSettings();
+
+    const isUseOcr = (outputType === K1WebTwain.Options.OutputFiletype.PDF ||
         outputType === K1WebTwain.Options.OutputFiletype['PDF/A']) &&
         parseInt(ocrType) !== K1WebTwain.Options.OcrType.None;
 
-    let strSettings = JSON.stringify({
-        ScanType: outputType,
-        UseOCR: isUseOcr,
-        OCRType: ocrType,
-        ScanSource: scanSource
-    });
+    if (scanSettings) {
+        scanSettings.ScanType = outputType;
+        scanSettings.UseOCR = isUseOcr;
+        scanSettings.OCRType = ocrType;
+        scanSettings.ScannerDetails = scannerDetails ?? getScannerDetails(scanSettings);
+    } else {
+        scanSettings = {
+            ScanType: outputType,
+            UseOCR: isUseOcr,
+            OCRType: ocrType,
+            ScannerDetails: scannerDetails ?? getScannerDetails(null)
+        }
+    }
 
     let set_cookies = function (name, value, days) {
         let expires = "";
@@ -41,7 +50,7 @@ export const saveDefaultScanSettings = (outputType, ocrType, scanSource) => {
         document.cookie = name + "=" + (value || "") + expires + "; path=/";
     };
 
-    set_cookies("DefaultScanSettings", strSettings, 365);
+    set_cookies("DefaultScanSettings", JSON.stringify(scanSettings), 365);
 }
 
 export const getDefaultScanSettings = () => {
@@ -66,4 +75,17 @@ export const getDefaultScanSettings = () => {
     }
 
     return null;
+}
+
+export const getScannerDetails = (scanSettings) => {
+    const defaultScannerDetails = scanSettings?.ScannerDetails;
+
+    return {
+        ScanSource: defaultScannerDetails?.ScanSource,
+        DocumentSource: defaultScannerDetails?.DocumentSource,
+        Resolution: defaultScannerDetails?.Resolution,
+        Color: defaultScannerDetails?.Color,
+        PageSize: defaultScannerDetails?.PageSize,
+        Duplex: defaultScannerDetails?.Duplex
+    };
 }

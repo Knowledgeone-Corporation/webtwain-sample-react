@@ -6,6 +6,7 @@ import {
     generateScanFileName,
     saveDefaultScanSettings,
     getDefaultScanSettings,
+    getScannerDetails,
     renderOptions,
 } from "../utils/scanningUtils.js";
 
@@ -24,8 +25,6 @@ export class ScannerInterfaceDesktop extends Component {
             isDisplayScanningSection: false,
             isDisableScanButton: true,
             isDisableFinalizeSection: true,
-            isDisplayImageOutputType: true,
-            isDisplayFileRestriction: false,
         };
         this.renderSelection = this.renderSelection.bind(this);
         this.handleDeviceChange = this.handleDeviceChange.bind(this);
@@ -65,11 +64,9 @@ export class ScannerInterfaceDesktop extends Component {
                 });
 
                 K1WebTwain.ResetService().then(function () {
-                    //setTimeout(() => {
                     self.setState({
                         isDisplayUI: true,
                     });
-                    //}, 4000)
                 });
             })
             .catch((err) => {
@@ -103,14 +100,17 @@ export class ScannerInterfaceDesktop extends Component {
                 });
 
                 let scanSettings = getDefaultScanSettings();
-                if (scanSettings) {
+
+                if (scanSettings?.ScannerDetails?.ScanSource) {
+                    const deviceId = scanSettings?.ScannerDetails?.ScanSource;
+
                     this.setState({
-                        selectedDeviceId: scanSettings.ScanSource,
+                        selectedDeviceId: deviceId,
                         selectedFileTypeOption: scanSettings.ScanType,
                         selectedOcrOption: scanSettings.UseOCR
                             ? scanSettings.OCRType
                             : K1WebTwain.Options.OcrType.None,
-                        isDisableScanButton: parseInt(scanSettings.ScanSource) === -1,
+                        isDisableScanButton: parseInt(deviceId) === -1,
                     });
                 }
             })
@@ -121,16 +121,20 @@ export class ScannerInterfaceDesktop extends Component {
 
     handleDeviceChange(e) {
         let deviceId = e.target.value;
+
         this.setState({
             selectedDeviceId: deviceId,
             isDisableScanButton: parseInt(e.target.value) === -1,
         });
 
-        let defaultSettings = getDefaultScanSettings();
+        const defaultSettings = getDefaultScanSettings();
+        let scannerDetails = getScannerDetails(defaultSettings);
+        scannerDetails.ScanSource = deviceId;
+
         saveDefaultScanSettings(
             defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
             defaultSettings?.OCRType ?? this.state.selectedOcrOption,
-            deviceId
+            scannerDetails
         );
     }
 
@@ -140,28 +144,7 @@ export class ScannerInterfaceDesktop extends Component {
         };
 
         K1WebTwain.StartScan(acquireRequest)
-            .then((response) => {
-                if (response.pageCount > 1) {
-                    this.setState({
-                        isDisplayFileRestriction: true,
-                    });
-                    let fileType = this.state.selectedFileTypeOption;
-                    if (
-                        fileType === "JPG" ||
-                        fileType === "GIF" ||
-                        fileType === "PNG" ||
-                        fileType === "BMP"
-                    ) {
-                        this.setState({ selectedFileTypeOption: K1WebTwain.Options.OutputFiletype.TIFF });
-                    }
-                    this.setState({ isDisplayImageOutputType: false });
-                } else {
-                    this.setState({
-                        isDisplayFileRestriction: false,
-                        isDisplayImageOutputType: true,
-                    });
-                }
-
+            .then(() => {
                 this.setState({
                     isDisableFinalizeSection: false,
                     isDisableScanButton: true,
@@ -173,24 +156,24 @@ export class ScannerInterfaceDesktop extends Component {
     }
 
     handleFileTypeChange(e) {
-        let outputType = e.target.value;
+        const outputType = e.target.value;
         this.setState({ selectedFileTypeOption: outputType });
-        let defaultSettings = getDefaultScanSettings();
+        const defaultSettings = getDefaultScanSettings();
+
         saveDefaultScanSettings(
             outputType,
-            defaultSettings?.OCRType ?? this.state.selectedOcrOption,
-            defaultSettings?.ScanSource ?? this.state.selectedDevice
+            defaultSettings?.OCRType ?? this.state.selectedOcrOption
         );
     }
 
     handlOcrTypeChange(e) {
-        let ocrType = e.target.value;
+        const ocrType = e.target.value;
         this.setState({ selectedOcrOption: ocrType });
-        let defaultSettings = getDefaultScanSettings();
+        const defaultSettings = getDefaultScanSettings();
+
         saveDefaultScanSettings(
             defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
-            ocrType,
-            defaultSettings?.ScanSource ?? this.state.selectedDevice
+            ocrType
         );
     }
 
@@ -375,24 +358,16 @@ export class ScannerInterfaceDesktop extends Component {
                                 <label className="scanning-label mt-2">
                                     Output File Type
                                 </label>
-                                {this.state.isDisplayFileRestriction && (
-                                    <span className="filetype-restriction">
-                                        File types restricted for multiple page scans
-                                    </span>
-                                )}
                                 <select
                                     id="sel-output"
                                     className="form-control"
                                     value={this.state.selectedFileTypeOption}
                                     onChange={this.handleFileTypeChange}
                                 >
-                                    {this.state.fileTypeOptions.map(
-                                        (device) =>
-                                            (device.value === "PDF" || device.value === "PDF/A" || device.value === "TIF" || this.state.isDisplayImageOutputType) && (
-                                                <option key={device.value} value={device.value}>
-                                                    {device.display}
-                                                </option>
-                                            )
+                                    {this.state.fileTypeOptions.map((fileType) =>
+                                        <option key={fileType.value} value={fileType.value}>
+                                            {fileType.display}
+                                        </option>
                                     )}
                                 </select>
 
