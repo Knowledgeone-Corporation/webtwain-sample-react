@@ -101,8 +101,8 @@ export class ScannerInterfaceDesktop extends Component {
 
                 let scanSettings = getDefaultScanSettings();
 
-                if (scanSettings?.ScannerDetails?.ScanSource) {
-                    const deviceId = scanSettings?.ScannerDetails?.ScanSource;
+                if (scanSettings) {
+                    const deviceId = scanSettings?.ScannerDetails?.ScanSource ? parseInt(scanSettings?.ScannerDetails?.ScanSource) : -1;
 
                     this.setState({
                         selectedDeviceId: deviceId,
@@ -110,7 +110,7 @@ export class ScannerInterfaceDesktop extends Component {
                         selectedOcrOption: scanSettings.UseOCR
                             ? scanSettings.OCRType
                             : K1WebTwain.Options.OcrType.None,
-                        isDisableScanButton: parseInt(deviceId) === -1,
+                        isDisableScanButton: deviceId === -1,
                     });
                 }
             })

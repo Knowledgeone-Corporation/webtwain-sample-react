@@ -117,14 +117,16 @@ export class ScannerInterfaceHidden extends Component {
 
                 let scanSettings = getDefaultScanSettings();
 
-                if (scanSettings?.ScannerDetails?.ScanSource) {
+                if (scanSettings) {
+                    const deviceId = scanSettings?.ScannerDetails?.ScanSource ? parseInt(scanSettings?.ScannerDetails?.ScanSource) : -1;
+
                     this.setState({
                         selectedFileTypeOption: scanSettings.ScanType,
                         selectedOcrOption: scanSettings.UseOCR
                             ? scanSettings.OCRType
                             : K1WebTwain.Options.OcrType.None
                     });
-                    this.handleDeviceChange(parseInt(scanSettings.ScannerDetails.ScanSource));
+                    this.handleDeviceChange(deviceId);
                 } else {
                     this.handleDeviceChange(defaultOptionsValue(mappedDevices));
                 }
