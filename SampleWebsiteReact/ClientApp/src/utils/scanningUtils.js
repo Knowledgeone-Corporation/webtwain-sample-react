@@ -19,7 +19,7 @@ export const defaultOptionsValue = (options) => {
     return options.length > 0 && !isEmpty(options[0]) ? options[0].value : 0;
 }
 
-export const saveDefaultScanSettings = (outputType, ocrType, scannerDetails = null) => {
+export const saveDefaultScanSettings = (outputType, ocrType, scannerDetails = null, fileCompressionType = null) => {
     let scanSettings = getDefaultScanSettings();
 
     const isUseOcr = (outputType === K1WebTwain.Options.OutputFiletype.PDF ||
@@ -31,12 +31,14 @@ export const saveDefaultScanSettings = (outputType, ocrType, scannerDetails = nu
         scanSettings.UseOCR = isUseOcr;
         scanSettings.OCRType = ocrType;
         scanSettings.ScannerDetails = scannerDetails ?? getScannerDetails(scanSettings);
+        scanSettings.FileCompressionType = fileCompressionType ?? scanSettings.FileCompressionType;
     } else {
         scanSettings = {
             ScanType: outputType,
             UseOCR: isUseOcr,
             OCRType: ocrType,
-            ScannerDetails: scannerDetails ?? getScannerDetails(null)
+            ScannerDetails: scannerDetails ?? getScannerDetails(null),
+            FileCompressionType: fileCompressionType
         }
     }
 
