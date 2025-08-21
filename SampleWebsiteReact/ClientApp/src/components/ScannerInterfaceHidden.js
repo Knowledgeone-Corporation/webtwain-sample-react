@@ -37,6 +37,8 @@ export class ScannerInterfaceHidden extends Component {
             isDisplayScanningSection: false,
             isDisableScanButton: true,
             isDisableFinalizeSection: true,
+            compressionOptions: [],
+            selectedCompressionOption: "",
         };
 
         this.renderSelection = this.renderSelection.bind(this);
@@ -49,6 +51,7 @@ export class ScannerInterfaceHidden extends Component {
         this.handleAttachDocument = this.handleAttachDocument.bind(this);
         this.handleSaveDocument = this.handleSaveDocument.bind(this);
         this.handleError = this.handleError.bind(this);
+        this.handleCompressionChange = this.handleCompressionChange.bind(this);
     }
 
     componentDidMount() {
@@ -107,10 +110,17 @@ export class ScannerInterfaceHidden extends Component {
                     true
                 );
 
+                let mappedCompressionOptions = convertRawOptions(
+                    K1WebTwain.Options.FileCompressionType,
+                    true
+                );
+
                 this.setState({
                     discoveredDevices: renderOptions(mappedDevices),
                     ocrOptions: renderOptions(mappedOcrTypes),
                     fileTypeOptions: renderOptions(mappedFileTypeOptions),
+                    compressionOptions: renderOptions(mappedCompressionOptions),
+                    selectedCompressionOption: mappedCompressionOptions.length > 0 ? mappedCompressionOptions[0].value : "",
                     outputFilename: generateScanFileName(),
                     isDisplayScanningSection: true,
                 });
@@ -124,7 +134,8 @@ export class ScannerInterfaceHidden extends Component {
                         selectedFileTypeOption: scanSettings.ScanType,
                         selectedOcrOption: scanSettings.UseOCR
                             ? scanSettings.OCRType
-                            : K1WebTwain.Options.OcrType.None
+                            : K1WebTwain.Options.OcrType.None,
+                        selectedCompressionOption: scanSettings.FileCompressionType ?? (mappedCompressionOptions.length > 0 ? mappedCompressionOptions[0].value : "")
                     });
                     this.handleDeviceChange(deviceId);
                 } else {
@@ -277,7 +288,8 @@ export class ScannerInterfaceHidden extends Component {
         saveDefaultScanSettings(
             defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
             defaultSettings?.OCRType ?? this.state.selectedOcrOption,
-            scannerDetails
+            scannerDetails,
+            this.state.selectedCompressionOption
         );
     }
 
@@ -310,7 +322,9 @@ export class ScannerInterfaceHidden extends Component {
 
         saveDefaultScanSettings(
             outputType,
-            defaultSettings?.OCRType ?? this.state.selectedOcrOption
+            defaultSettings?.OCRType ?? this.state.selectedOcrOption,
+            undefined,
+            this.state.selectedCompressionOption
         );
     }
 
@@ -321,7 +335,22 @@ export class ScannerInterfaceHidden extends Component {
 
         saveDefaultScanSettings(
             defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
-            ocrType
+            ocrType,
+            undefined,
+            this.state.selectedCompressionOption
+        );
+    }
+
+    handleCompressionChange(e) {
+        const compressionType = e.target.value;
+        this.setState({ selectedCompressionOption: compressionType });
+        const defaultSettings = getDefaultScanSettings();
+
+        saveDefaultScanSettings(
+            defaultSettings?.ScanType ?? this.state.selectedFileTypeOption,
+            defaultSettings?.OCRType ?? this.state.selectedOcrOption,
+            undefined,
+            compressionType
         );
     }
 
@@ -342,6 +371,7 @@ export class ScannerInterfaceHidden extends Component {
         K1WebTwain.ValidatePageSize({
             ocrType: this.state.selectedOcrOption,
             fileType: this.state.selectedFileTypeOption,
+            fileCompressionType: this.state.selectedCompressionOption,
             saveToType: K1WebTwain.Options.SaveToType.Upload,
             generateDocument: () => {
                 this.generateDocument(K1WebTwain.Options.SaveToType.Upload);
@@ -353,6 +383,7 @@ export class ScannerInterfaceHidden extends Component {
         K1WebTwain.ValidatePageSize({
             ocrType: this.state.selectedOcrOption,
             fileType: this.state.selectedFileTypeOption,
+            fileCompressionType: this.state.selectedCompressionOption,
             saveToType: K1WebTwain.Options.SaveToType.Local,
             generateDocument: () => {
                 this.generateDocument(K1WebTwain.Options.SaveToType.Local);
@@ -364,6 +395,7 @@ export class ScannerInterfaceHidden extends Component {
         K1WebTwain.GenerateDocument({
             filetype: this.state.selectedFileTypeOption,
             ocrType: this.state.selectedOcrOption,
+            fileCompressionType: this.state.selectedCompressionOption,
             saveToType: saveToType,
             filename: this.state.outputFilename,
         })
@@ -526,6 +558,24 @@ export class ScannerInterfaceHidden extends Component {
                 ""
             );
 
+        let compressionSelect = (
+            <div>
+                <label>Output File Compression</label>
+                <select
+                    id="sel-compression"
+                    className="form-control"
+                    value={this.state.selectedCompressionOption}
+                    onChange={this.handleCompressionChange}
+                >
+                    {this.state.compressionOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.display}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        );
+
         return (
             this.state.isDisplayUI && (
                 <div>
@@ -626,7 +676,7 @@ export class ScannerInterfaceHidden extends Component {
                                         </option>
                                     ))}
                                 </select>
-
+                                {compressionSelect}
                                 {
                                     (this.state.selectedFileTypeOption === K1WebTwain.Options.OutputFiletype.PDF ||
                                         this.state.selectedFileTypeOption === K1WebTwain.Options.OutputFiletype['PDF/A']) && <div>
